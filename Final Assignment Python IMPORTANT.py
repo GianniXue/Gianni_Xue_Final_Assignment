@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[40]:
 
 
 # Import necessary libraries
@@ -269,6 +269,222 @@ plt.title('Number of Appointments in April 2022 for Service Settings')
 plt.xlabel('Service Setting')
 plt.ylabel('Number of Appointments')
 plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+
+# In[30]:
+
+
+tweets = pd.read_csv("/Users/giannixue/Desktop/Python Finals/tweets.csv")
+
+
+# In[39]:
+
+
+sns.set(rc={'figure.figsize':(15, 12)})
+sns.set_style("white")
+
+pd.options.display.max_colwidth = 200
+
+print(tweets.head())
+print(tweets.describe())
+print(tweets.info())
+print(tweets['tweet_retweet_count'].value_counts())
+print(tweets['tweet_favorite_count'].value_counts())
+
+#Using tweet_entities_hashtags instead of tweet_full_text
+tweets_text = pd.DataFrame(tweets['tweet_entities_hashtags'])
+
+# Convert the 'tweet_entities_hashtags' column to strings and handle NaN values
+tweets_text['tweet_entities_hashtags'] = tweets_text['tweet_entities_hashtags'].apply(lambda x: str(x) if pd.notnull(x) else "")
+print(tweets_text.head())
+
+tags = []
+for entry in tweets_text['tweet_entities_hashtags']:
+    tags.extend(entry.split(', '))
+tags_series = pd.Series(tags)
+print(tags_series.head(30))
+
+data = tags_series.value_counts().reset_index()
+data.columns = ['word', 'count']
+data['count'] = data['count'].astype(int)
+print(data.head())
+
+sns.barplot(x='count', y='word', data=data[data['count'] > 10])
+filtered_data = data[data['count'] > 10]
+sns.barplot(x='count', y='word', data=filtered_data)
+
+
+# In[44]:
+
+
+# Select the required columns
+ar_agg = ar[['appointment_month', 'hcp_type', 'appointment_status', 'appointment_mode', 'time_between_book_and_appointment', 'count_of_appointments']]
+
+# Group by the selected columns and calculate the sum of count_of_appointments
+ar_agg = ar_agg.groupby(['appointment_month', 'hcp_type', 'appointment_status', 'appointment_mode', 'time_between_book_and_appointment']).sum().reset_index()
+
+print(ar_agg)
+
+
+# In[42]:
+
+
+# Create a new DataFrame 'ar_df' to calculate total appointments per month
+ar_df = ar_agg.groupby('appointment_month')['count_of_appointments'].sum().reset_index()
+
+# Calculate the average utilization of services and add it as a new column
+ar_df['utilisation'] = ar_df['count_of_appointments'] / 30  
+
+# Limit the utilization to a maximum of 1,200,000 appointments per day
+ar_df['utilisation'] = ar_df['utilisation'].apply(lambda x: min(x, 1200000))
+
+# Round the utilization to one decimal place
+ar_df['utilisation'] = ar_df['utilisation'].round(1)
+
+# View the DataFrame
+print(ar_df)
+
+
+# In[43]:
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Convert appointment_month to string for ease of visualization
+ar_agg['appointment_month'] = ar_agg['appointment_month'].astype(str)
+ar_df['appointment_month'] = ar_df['appointment_month'].astype(str)
+
+# Create lineplot indicating the number of monthly visits
+plt.figure(figsize=(10, 6))
+sns.lineplot(data=ar_df, x='appointment_month', y='count_of_appointments')
+plt.xlabel('Appointment Month')
+plt.ylabel('Number of Monthly Visits')
+plt.title('Number of Monthly Visits')
+plt.xticks(rotation=45)
+plt.show()
+
+# Create lineplot indicating the monthly capacity utilisation
+plt.figure(figsize=(10, 6))
+sns.lineplot(data=ar_df, x='appointment_month', y='utilisation')
+plt.axhline(y=1200000, color='r', linestyle='--', label='Max Capacity')
+plt.xlabel('Appointment Month')
+plt.ylabel('Monthly Capacity Utilisation')
+plt.title('Monthly Capacity Utilisation')
+plt.xticks(rotation=45)
+plt.legend()
+plt.show()
+
+
+# In[45]:
+
+
+# How do the healthcare professional types differ over time?
+# Convert 'appointment_month' to pandas datetime format (skip this step if already in datetime format)
+ar_agg['appointment_month'] = pd.to_datetime(ar_agg['appointment_month'])
+
+# Create the line plot
+plt.figure(figsize=(10, 6))
+sns.lineplot(data=ar_agg, x='appointment_month', y='count_of_appointments', hue='hcp_type')
+plt.xlabel('Appointment Month')
+plt.ylabel('Number of Appointments')
+plt.title('Healthcare Professional Types Over Time')
+plt.xticks(rotation=45)
+plt.legend(title='Healthcare Professional Type', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
+# In[46]:
+
+
+# Are there significant changes in whether or not visits are attended?
+# Convert 'appointment_month' to pandas datetime format (skip this step if already in datetime format)
+ar_agg['appointment_month'] = pd.to_datetime(ar_agg['appointment_month'])
+
+# Create the line plot
+plt.figure(figsize=(10, 6))
+sns.lineplot(data=ar_agg, x='appointment_month', y='count_of_appointments', hue='appointment_status')
+plt.xlabel('Appointment Month')
+plt.ylabel('Number of Appointments')
+plt.title('Appointment Attendance Over Time')
+plt.xticks(rotation=45)
+plt.legend(title='Appointment Status', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
+# In[48]:
+
+
+# Are there changes in terms of appointment type and the busiest months?
+ar_agg['appointment_month'] = pd.to_datetime(ar_agg['appointment_month'])
+
+# Create the line plot
+plt.figure(figsize=(10, 6))
+sns.lineplot(data=ar_agg, x='appointment_month', y='count_of_appointments', hue='appointment_mode')
+plt.xlabel('Appointment Month')
+plt.ylabel('Number of Appointments')
+plt.title('Appointment Types Over Time')
+plt.xticks(rotation=45)
+plt.legend(title='Appointment Mode', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
+# In[49]:
+
+
+# Are there any trends in time between booking an appointment?
+# Create the line plot
+plt.figure(figsize=(10, 6))
+sns.lineplot(data=ar_agg, x='appointment_month', y='time_between_book_and_appointment')
+plt.xlabel('Appointment Month')
+plt.ylabel('Time Between Booking and Appointment')
+plt.title('Trends in Time Between Booking and Appointment')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+
+# In[50]:
+
+
+# How do the various service settings compare?
+# Assuming 'nc' is your national_category DataFrame
+# Group by the month of appointment and service setting to get the count of appointments
+service_appointments = nc.groupby(['appointment_month', 'service_setting']).size().reset_index(name='count_of_appointments')
+
+# View the new DataFrame
+print(service_appointments)
+
+# Convert 'appointment_month' to pandas datetime format (skip this step if already in datetime format)
+service_appointments['appointment_month'] = pd.to_datetime(service_appointments['appointment_month'])
+
+# Create a bar plot to visualize the number of appointments for each service setting
+plt.figure(figsize=(10, 6))
+sns.barplot(data=service_appointments, x='appointment_month', y='count_of_appointments', hue='service_setting')
+plt.xlabel('Appointment Month')
+plt.ylabel('Number of Appointments')
+plt.title('Number of Appointments by Service Settings')
+plt.xticks(rotation=45)
+plt.legend(title='Service Setting', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+# Filter out the GP visits from the DataFrame
+service_appointments_without_GP = service_appointments[service_appointments['service_setting'] != 'GP']
+
+# Create a bar plot to visualize the number of appointments for each service setting (excluding GP visits)
+plt.figure(figsize=(10, 6))
+sns.barplot(data=service_appointments_without_GP, x='appointment_month', y='count_of_appointments', hue='service_setting')
+plt.xlabel('Appointment Month')
+plt.ylabel('Number of Appointments')
+plt.title('Number of Appointments by Service Settings (Excluding GP)')
+plt.xticks(rotation=45)
+plt.legend(title='Service Setting', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.show()
 
